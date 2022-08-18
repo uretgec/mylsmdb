@@ -1,5 +1,5 @@
 # MYLSMDB
-Log Structured Merges Tree databases (leveldb, pogreb and nutsdb) based storage unit
+Log Structured Merge Tree databases (leveldb, pogreb and nutsdb) based storage unit
 
 Use:
 - leveldb https://github.com/syndtr/goleveldb

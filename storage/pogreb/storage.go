@@ -17,7 +17,7 @@ type Store struct {
 	readOnly   bool
 }
 
-func NewStore(bucketList, indexList []string, path string, dbName string, readOnly bool) (*Store, error) {
+func NewStore(bucketList []string, path string, dbFolder string, readOnly bool) (*Store, error) {
 	s := &Store{}
 	s.bucketList = bucketList
 	s.readOnly = readOnly
@@ -26,7 +26,12 @@ func NewStore(bucketList, indexList []string, path string, dbName string, readOn
 	_ = storage.CreateDir(path)
 
 	// Open DB
-	db, err := pogreb.Open(fmt.Sprintf("%s%s.db", path, dbName), nil)
+	db, err := pogreb.Open(
+		fmt.Sprintf("%s%s", path, dbFolder),
+		&pogreb.Options{
+			BackgroundSyncInterval: -1, // every write operation sync trigger
+		},
+	)
 	if err != nil {
 		return s, err
 	}
@@ -39,6 +44,7 @@ func (s *Store) CloseStore() error {
 	return s.db.Close()
 }
 
+// BackgroundSyncInterval option enabled. Not neccessary to call
 func (s *Store) SyncStore() {
 	s.db.Sync()
 }

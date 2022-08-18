@@ -18,7 +18,7 @@ type Store struct {
 	readOnly   bool
 }
 
-func NewStore(bucketList, indexList []string, path string, dbName string, readOnly bool) (*Store, error) {
+func NewStore(bucketList []string, path string, dbFolder string, readOnly bool) (*Store, error) {
 	s := &Store{}
 	s.bucketList = bucketList
 	s.readOnly = readOnly
@@ -28,7 +28,7 @@ func NewStore(bucketList, indexList []string, path string, dbName string, readOn
 
 	// Open DB
 	db, err := leveldb.OpenFile(
-		fmt.Sprintf("%s%s.db", path, dbName),
+		fmt.Sprintf("%s%s", path, dbFolder),
 		&opt.Options{
 			ReadOnly:               readOnly,
 			OpenFilesCacheCapacity: 256,
@@ -48,7 +48,7 @@ func (s *Store) CloseStore() error {
 }
 
 func (s *Store) SyncStore() {
-
+	// Not necessary
 }
 
 func (s *Store) Set(bucketName []byte, k []byte, v []byte) ([]byte, error) {

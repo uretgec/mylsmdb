@@ -28,7 +28,7 @@ func TestCmd(t *testing.T) {
 }
 
 func OpenStore() (*Store, error) {
-	return NewStore([]string{"options", "posts", "pages"}, []string{"posts", "pages"}, "./", "storage_test", false)
+	return NewStore([]string{"options", "posts", "pages"}, "./", "storage_test", false)
 }
 
 func DeleteStore() error {

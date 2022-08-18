@@ -1,17 +1,13 @@
 # MYLSMDB
-Log Structured Merges Tree databases (levelDB, pogreb and nutsdb) based storage unit
+Log Structured Merges Tree databases (leveldb, pogreb and nutsdb) based storage unit
 
 Use:
-- bbolt: go.etcd.io/bbolt
-- sniper: github.com/recoilme/sniper
+- leveldb https://github.com/syndtr/goleveldb
+- pogreb https://github.com/akrylysov/pogreb
+- nutsdb https://github.com/nutsdb/nutsdb
 
 NOTE:
-> If use only boltdb, all key-value data are at in-memory and saves all data to snapshot file for recovery
-
-> If use only sniperdb, all index data are at in-memory and save all key-value data to file (multiple files)
-> sniperdb have to use bboltdb index for list, prevlist, exist methods
-
-> You can use both db together without any problems.
+> ...
 
 ## Methods
 ```

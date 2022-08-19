@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/uretgec/mylsmdb/storage"
 
@@ -28,7 +29,7 @@ func NewStore(bucketList []string, path string, dbFolder string, readOnly bool) 
 
 	// Open DB
 	db, err := leveldb.OpenFile(
-		fmt.Sprintf("%s%s", path, dbFolder),
+		fmt.Sprintf("%s/%s", strings.TrimSuffix(path, "/"), dbFolder),
 		&opt.Options{
 			ReadOnly:               readOnly,
 			OpenFilesCacheCapacity: 256,
@@ -108,19 +109,13 @@ func (s *Store) MGet(bucketName []byte, keys ...[]byte) (list map[string]interfa
 			continue
 		}
 
-		items[gkey] = string(v)
+		items[string(k)] = string(v)
 	}
 
 	return items, nil
 }
 
-/*
-First()  Move to the first key.
-Last()   Move to the last key.
-Seek()   Move to a specific key.
-Next()   Move to the next key.
-Prev()   Move to the previous key.
-*/
+// order by asc
 func (s *Store) List(bucketName []byte, k []byte, perpage int) (list []string, err error) {
 	if len(bucketName) > 0 && !storage.Contains(s.bucketList, bucketName) {
 		return nil, errors.New("unknown bucket name")
@@ -138,7 +133,7 @@ func (s *Store) List(bucketName []byte, k []byte, perpage int) (list []string, e
 		gkey := storage.GenerateKey(bucketName, k)
 		for ok := c.Seek([]byte(gkey)); ok; ok = c.Next() {
 
-			if bytes.Equal([]byte(gkey), k) {
+			if bytes.Equal([]byte(gkey), c.Key()) {
 				continue
 			}
 
@@ -173,6 +168,7 @@ func (s *Store) List(bucketName []byte, k []byte, perpage int) (list []string, e
 	return items, err
 }
 
+// order by desc
 func (s *Store) PrevList(bucketName []byte, k []byte, perpage int) (list []string, err error) {
 	if len(bucketName) > 0 && !storage.Contains(s.bucketList, bucketName) {
 		return nil, errors.New("unknown bucket name")

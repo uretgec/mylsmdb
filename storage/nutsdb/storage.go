@@ -1,6 +1,7 @@
 package nutsdbstorage
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strings"
@@ -33,7 +34,7 @@ func NewStore(bucketList []string, path string, dbFolder string, readOnly bool) 
 			SyncEnable:           true,
 			StartFileLoadingMode: nutsdb.FileIO,
 		},
-		nutsdb.WithDir(fmt.Sprintf("%s%s", path, dbFolder)),
+		nutsdb.WithDir(fmt.Sprintf("%s/%s", strings.TrimSuffix(path, "/"), dbFolder)),
 	)
 	if err != nil {
 		return s, err
@@ -84,9 +85,12 @@ func (s *Store) Get(bucketName []byte, k []byte) ([]byte, error) {
 	var item []byte
 	err := s.db.View(func(t *nutsdb.Tx) error {
 		rxData, err := t.Get(string(bucketName), k)
-		if err != nil {
+		if err == nutsdb.ErrNotFoundKey {
+			return nil
+		} else if err != nil {
 			return err
 		}
+
 		if len(rxData.Value) > 0 {
 			item = rxData.Value
 		}
@@ -105,13 +109,15 @@ func (s *Store) MGet(bucketName []byte, keys ...[]byte) (list map[string]interfa
 	items := make(map[string]interface{})
 
 	err = s.db.View(func(t *nutsdb.Tx) error {
-		for index, key := range keys {
+		for _, key := range keys {
 			rxData, err := t.Get(string(bucketName), key)
-			if err != nil {
-				return err
+			if err == nutsdb.ErrNotFoundKey {
+				continue
+			} else if err != nil {
+				continue
 			}
 
-			items[fmt.Sprintf("%d:%s", index, key)] = string(rxData.Value)
+			items[string(key)] = string(rxData.Value)
 		}
 
 		return nil
@@ -124,16 +130,16 @@ func (s *Store) MGet(bucketName []byte, keys ...[]byte) (list map[string]interfa
 	return items, nil
 }
 
-/*
-First()  Move to the first key.
-Last()   Move to the last key.
-Seek()   Move to a specific key.
-Next()   Move to the next key.
-Prev()   Move to the previous key.
-*/
+// order by asc
 func (s *Store) List(bucketName []byte, k []byte, perpage int) (list []string, err error) {
 	if len(bucketName) > 0 && !storage.Contains(s.bucketList, bucketName) {
 		return nil, errors.New("unknown bucket name")
+	}
+
+	//return []string{fmt.Sprintf("%d", s.statsBucket(bucketName))}, nil
+	// line 162 - when bucket is empty and call c.SetNext, boom. its huge bug!
+	if s.statsBucket(bucketName) == 0 {
+		return nil, nil
 	}
 
 	counter := 1
@@ -148,19 +154,26 @@ func (s *Store) List(bucketName []byte, k []byte, perpage int) (list []string, e
 	c := nutsdb.NewIterator(tx, string(bucketName))
 	if len(k) > 0 {
 		err = c.Seek(k)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	for {
 		ok, err := c.SetNext()
+		if !ok {
+			err = nil
+			break
+		}
+
 		if err != nil {
 			break
 		}
 
-		if !ok {
+		if bytes.Equal(k, c.Entry().Key) {
 			continue
 		}
 
-		// Key: c.Entry().Key
 		items = append(items, string(c.Entry().Value))
 
 		if counter >= perpage {
@@ -198,7 +211,11 @@ func (s *Store) KeyExist(bucketName []byte, k []byte) (bool, error) {
 	var exists bool
 	err := s.db.View(func(t *nutsdb.Tx) error {
 		rxData, err := t.Get(string(bucketName), k)
-		if err != nil {
+		if err == nutsdb.ErrNotFoundKey {
+			return nil
+		} else if err == nutsdb.ErrKeyNotFound {
+			return nil
+		} else if err != nil {
 			return err
 		}
 
@@ -234,12 +251,17 @@ func (s *Store) HasBucket(bucketName []byte) bool {
 	return storage.Contains(s.bucketList, bucketName)
 }
 
-func (s *Store) StatsBucket(bucketName []byte) int {
+func (s *Store) statsBucket(bucketName []byte) int {
 	if len(bucketName) > 0 && !storage.Contains(s.bucketList, bucketName) {
 		return 0
 	}
 
-	return s.db.BPTreeIdx[string(bucketName)].ValidKeyCount
+	treeIdx, ok := s.db.BPTreeIdx[string(bucketName)]
+	if !ok {
+		return 0
+	}
+
+	return treeIdx.ValidKeyCount
 }
 
 func (s *Store) ListBucket() (buckets []string, err error) {
@@ -268,7 +290,12 @@ func (s *Store) DeleteBucket(bucketName []byte) error {
 	}
 
 	return s.db.Update(func(t *nutsdb.Tx) error {
-		return t.DeleteBucket(nutsdb.DataStructureBPTree, string(bucketName))
+		err := t.DeleteBucket(nutsdb.DataStructureBPTree, string(bucketName))
+		if err != nil {
+			return err
+		}
+
+		return t.DeleteBucket(nutsdb.DataStructureSet, string(bucketName))
 	})
 }
 

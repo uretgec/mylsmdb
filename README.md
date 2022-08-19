@@ -10,7 +10,7 @@ NOTE:
 > ...
 
 ## Methods
-```
+```go
 	CloseStore()
 	SyncStore()
 
@@ -22,10 +22,8 @@ NOTE:
 	Delete(bucketName []byte, k []byte) error
 
 	KeyExist(bucketName []byte, k []byte) (bool, error)
-	ValueExist(bucketName []byte, v []byte) (bool, error)
 
 	HasBucket(bucketName []byte) bool
-	StatsBucket(bucketName []byte) int
 	ListBucket(bucketName []byte) int
 	DeleteBucket(bucketName []byte) int
 
@@ -39,8 +37,17 @@ NOTE:
 go get  github.com/uretgec/mylsmdb
 ```
 
+## Tests
+
+```go
+go test -timeout 30s -run ^TestCmd$ github.com/uretgec/mylsmdb/storage/leveldb
+go test -timeout 30s -run ^TestCmd$ github.com/uretgec/mylsmdb/storage/pogreb
+go test -timeout 30s -run ^TestCmd$ github.com/uretgec/mylsmdb/storage/nutsdb
+```
+
 ## TODO
 - Add new examples
+- Add more tests (backup and restore)
 
 ## Links
 

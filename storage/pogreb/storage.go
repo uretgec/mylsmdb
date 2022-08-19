@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/uretgec/mylsmdb/storage"
@@ -27,7 +28,7 @@ func NewStore(bucketList []string, path string, dbFolder string, readOnly bool) 
 
 	// Open DB
 	db, err := pogreb.Open(
-		fmt.Sprintf("%s%s", path, dbFolder),
+		fmt.Sprintf("%s/%s", strings.TrimSuffix(path, "/"), dbFolder),
 		&pogreb.Options{
 			BackgroundSyncInterval: -1, // every write operation sync trigger
 		},
@@ -82,6 +83,9 @@ func (s *Store) Get(bucketName []byte, k []byte) ([]byte, error) {
 	gkey := storage.GenerateKey(bucketName, k)
 
 	v, err := s.db.Get([]byte(gkey))
+	if err == leveldb.ErrNotFound {
+		return v, nil
+	}
 
 	return v, err
 }
@@ -103,20 +107,18 @@ func (s *Store) MGet(bucketName []byte, keys ...[]byte) (list map[string]interfa
 			continue
 		}
 
-		items[gkey] = string(v)
+		items[string(k)] = string(v)
 	}
 
 	return items, nil
 }
 
-/*
-First()  Move to the first key.
-Last()   Move to the last key.
-Seek()   Move to a specific key.
-Next()   Move to the next key.
-Prev()   Move to the previous key.
-*/
 func (s *Store) List(bucketName []byte, k []byte, perpage int) (list []string, err error) {
+	return nil, errors.New("not implemented")
+}
+
+// order by asc
+func (s *Store) PrevList(bucketName []byte, k []byte, perpage int) (list []string, err error) {
 	if len(bucketName) > 0 && !storage.Contains(s.bucketList, bucketName) {
 		return nil, errors.New("unknown bucket name")
 	}
@@ -135,14 +137,15 @@ func (s *Store) List(bucketName []byte, k []byte, perpage int) (list []string, e
 		for {
 			key, val, err := c.Next()
 			if err == pogreb.ErrIterationDone {
+				err = nil
 				break
 			}
 
-			if !bytes.HasPrefix([]byte(prefix), key) {
+			if !bytes.HasPrefix(key, []byte(prefix)) {
 				continue
 			}
 
-			if bytes.Equal([]byte(gkey), k) {
+			if bytes.Equal([]byte(gkey), key) {
 				continue
 			}
 
@@ -158,10 +161,11 @@ func (s *Store) List(bucketName []byte, k []byte, perpage int) (list []string, e
 		for {
 			key, val, err := c.Next()
 			if err == pogreb.ErrIterationDone {
+				err = nil
 				break
 			}
 
-			if !bytes.HasPrefix([]byte(prefix), key) {
+			if !bytes.HasPrefix(key, []byte(prefix)) {
 				continue
 			}
 
@@ -180,10 +184,6 @@ func (s *Store) List(bucketName []byte, k []byte, perpage int) (list []string, e
 	}
 
 	return items, err
-}
-
-func (s *Store) PrevList(bucketName []byte, k []byte, perpage int) (list []string, err error) {
-	return nil, errors.New("not implemented")
 }
 
 func (s *Store) KeyExist(bucketName []byte, k []byte) (bool, error) {
@@ -240,6 +240,7 @@ func (s *Store) DeleteBucket(bucketName []byte) error {
 	for {
 		key, _, err = c.Next()
 		if err == pogreb.ErrIterationDone {
+			err = nil
 			break
 		}
 
@@ -247,7 +248,7 @@ func (s *Store) DeleteBucket(bucketName []byte) error {
 			break
 		}
 
-		if !bytes.HasPrefix([]byte(prefix), key) {
+		if !bytes.HasPrefix(key, []byte(prefix)) {
 			continue
 		}
 

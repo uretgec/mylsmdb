@@ -1,4 +1,4 @@
-package leveldbstorage
+package nutsdbstorage
 
 import (
 	"bytes"
@@ -43,13 +43,11 @@ func TestCmd(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, list, []string{"number two"})
 
-	list, err = store.PrevList([]byte("posts"), nil, 10)
-	assert.NoError(t, err)
-	assert.Equal(t, list, []string{"number two", "number one"})
+	_, err = store.PrevList([]byte("posts"), nil, 10)
+	assert.Error(t, err)
 
-	list, err = store.PrevList([]byte("posts"), []byte("test_1"), 10)
-	assert.NoError(t, err)
-	assert.Equal(t, list, []string{"number one"})
+	_, err = store.PrevList([]byte("posts"), []byte("test_1"), 10)
+	assert.Error(t, err)
 
 	ok, err := store.KeyExist([]byte("posts"), []byte("test_1"))
 	assert.True(t, ok)

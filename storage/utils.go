@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // u64tob converts a uint64 into an 8-byte slice.
@@ -63,4 +64,9 @@ func GenerateKey(bucketName, k []byte) string {
 	}
 
 	return fmt.Sprintf("%s-%s", bucketName, k)
+}
+
+// Find real key
+func GetRealKey(dbkey, bucketName []byte) string {
+	return strings.TrimPrefix(string(dbkey), GenerateKey(bucketName, nil))
 }
